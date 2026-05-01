@@ -41,46 +41,166 @@ Você pode implementar outras funções para auxiliar a função `player` e salv
 Para mais informações, verifique o README.md ou consulte um monitor.
 """
 
+import time
 import random
 
-CHUTE_DE_NUMERO = "NUMBER"
-CHUTE_DE_REGRA = "RULE"
+def mod_algorithm(number_guesses, rule_guesses):
+    # Implementação do algoritmo para chutar regras do tipo "mod"
+    # temporario:
+    print("Tentando MOD")
+    return ["RULE", ["mod", 3, 1]]
 
+def pot_algorithm(number_guesses, rule_guesses):
+    # Implementação do algoritmo para chutar regras do tipo "pot"
+    # temporario:
+    print("Tentando POT")
+    return ["RULE", ["pot", 2, 0]]
+
+
+# 1 hora e meia pra fazer isso
+def int_algorithm(number_guesses, rule_guesses):
+    pensamento = []
+    number_hash = {}
+    for ng in number_guesses:
+        chute, direcao, acerto = ng
+        number_hash[chute] = direcao #acerto nn precisa
+        # pq se o chute for correto, a direção é "igual"
+    
+    menor = 1
+    maior = 100_000
+    corretos = []
+    for ng in number_guesses:
+        chute, direcao, acerto = ng
+        if direcao == "maior" and not acerto:
+            
+            menor = max(menor, chute)
+            pensamento.append(f"chute {chute} é menor que o número que satisfaz a regra, novo intervalo: {menor}-{maior}")
+        elif direcao == "menor" and not acerto:
+            
+            maior = min(maior, chute)
+            pensamento.append(f"chute {chute} é maior que o número que satisfaz a regra, novo intervalo: {menor}-{maior}")
+        
+        if acerto:
+            corretos.append(chute)
+            pensamento.append(f"chute {chute} é igual ao número que satisfaz a regra, novo intervalo: {menor}-{maior}")
+
+    print(f"mn {menor}-{maior}")
+    
+
+    if len(corretos) == 0:
+        to_test = (menor + maior) // 2
+        return ["NUMBER", to_test]
+    
+    menor_c = None
+    maior_c = None
+    for i in corretos:
+        if menor_c == None or maior_c == None:
+            pensamento.append(f"primeiro correto encontrado: {i}")
+            menor_c = i
+            maior_c = i
+            continue
+
+        if i < menor_c:
+            menor_c = i
+            pensamento.append(f"{i} é menor que {menor_c}(menor_c), atualizando menor_c")
+        if i > maior_c:
+            maior_c = i
+            pensamento.append(f"{i} é maior que {maior_c}(maior_c), atualizando maior_c")
+    
+    # testando se os valores fazem sentido:
+    if menor_c == None or maior_c == None:
+        raise Exception("ERRO, CORRETOS VAZIO, MAS AINDA ASSIM CHEGOU AQUI")
+    
+    if menor_c < menor or maior_c > maior:
+        pensamento.append(f"menor_c {menor_c} ou maior_c {maior_c} estão fora do intervalo de pensamento, que é {menor}-{maior}")
+        for i in pensamento:
+            print(i)
+        for i in corretos:
+            print(f"correto {i}")
+        raise Exception("ERRO, CORRETOS FORA DO INTERVALO, MAS AINDA ASSIM CHEGOU AQUI")
+    
+    # Testamos se a parte de cima ta certinha
+    cima_ok = False
+    cima_teste = number_hash.get(maior_c+1, None)
+    if cima_teste == "menor":
+        cima_ok = True
+    
+    if cima_teste == None:
+        to_test = (maior_c + maior)// 2
+        if to_test == maior_c:
+            to_test += 1 #evita ficar travado testando o mesmo numero
+        return ["NUMBER", to_test]
+    
+    if cima_teste == "maior":
+        # isso é um erro, pq se maior_c é o maior numero que satisfaz a regra, o numero imediatamente acima dele nn pode satisfazer a regra
+        raise Exception("ERRO, MAIOR_C+1 MAIOR, MAS MAIOR_C É O MAIOR QUE SATISFAZ A REGRA, MAS AINDA ASSIM CHEGOU AQUI")   
+    
+    # Testamos se a parte de baixo ta certinha
+    baixo_ok = False
+    baixo_teste = number_hash.get(menor_c-1, None)
+    if baixo_teste == "maior":
+        baixo_ok = True
+
+    if baixo_teste == None:
+        to_test = (menor_c + menor) // 2
+        if to_test == menor_c:
+            to_test -= 1 #evita ficar travado testando o mesmo numero
+        return ["NUMBER", to_test]
+
+    if baixo_teste == "menor":
+        # isso é um erro, pq se menor_c é o menor numero que satisfaz a regra, o numero imediatamente abaixo dele nn pode satisfazer a regra
+        raise Exception("ERRO, MENOR_C-1 MENOR, MAS MENOR_C É O MENOR QUE SATISFAZ A REGRA, MAS AINDA ASSIM CHEGOU AQUI")
+    
+    # Se chegou aqui, é pq tanto a parte de cima quanto a parte de baixo estão certinhas, então o intervalo entre menor_c e maior_c é o intervalo correto
+    return ["RULE", ["int", menor_c, maior_c]]
+
+
+        
+    
+        
+
+
+    
+
+    
+
+
+    
 ## estrategia: um ser humano, vou botar print e input para ler o chute do jogador, e retornar o chute lido
 def player(number_guesses, rule_guesses):
+    qnt_rule = len(rule_guesses)
 
-    
-    print(number_guesses[-1] if number_guesses else "")
-    print(rule_guesses[-1] if rule_guesses else "")
-    chute = input("Digite seu chute (ex: 'NUMBER 42' ou 'RULE mod 3 1'): ")
-    chute = chute.split()
-    if chute[0] == CHUTE_DE_NUMERO:
-        return [CHUTE_DE_NUMERO, int(chute[1])]
-    elif chute[0] == CHUTE_DE_REGRA:
-        return [CHUTE_DE_REGRA, chute[1:]]
-    else:
-        print("Chute inválido. Tente novamente.")
-        return player(number_guesses, rule_guesses)
+    if len(number_guesses) < 10:
+        # nos primeiros 10 chutes, chutamos numeros aleatorios para ter uma ideia da regra
+        # isso é temporario pq só tem o INT por enquanto ent ele nn tem info nenhuma pra usar
+        chute = random.randint(1, 100_000)
+        return ["NUMBER", chute]
 
 
 
-    # """Função principal do jogador. 
+    if qnt_rule == 0: 
+        #verifica se a regra aplica pra todos os numeros
+        return ["RULE", ["mod", 1, 0]]
     
-    # Exemplo de estratégia: chutar regras aleatórias.
-    # """
+    # A partir daqui nós fazemos um chute de regra para
+    # cada regra, caso seja descoberto que não é a regra
+    # um chute de regra qualquer é feito para passar para
+    # testar a proxima regra.
+    # OBS: Igor, pode trocar o MOD pelo POT, dependendo do seu algoritimo
+
+    if qnt_rule == 1:
+        chute = mod_algorithm(number_guesses, rule_guesses)
+        if chute != None:
+            return chute
     
-    # TIPO = random.choice(["mod", "pot", "int"])
+    if qnt_rule == 2:
+        chute = pot_algorithm(number_guesses, rule_guesses)
+        if chute != None:
+            return chute
+
+    if qnt_rule >= 3:
+        chute = int_algorithm(number_guesses, rule_guesses)
+        if chute != None:
+            return chute
     
-    # if TIPO == "mod":
-    #     k = random.randint(2, 100)
-    #     r = random.randint(0, k - 1)
-    #     chute = [TIPO, k, r]
-    # elif TIPO == "pot":
-    #     p = random.randint(2, 10)
-    #     chute = [TIPO, p, 0]
-    # else:
-    #     a = random.randint(1, 100_000) # Dica: o underline (_) pode ser usado para melhorar a legibilidade de números grandes em Python!
-    #     b = random.randint(a, min(100_000, a + 100))
-    #     chute = [TIPO, a, b]
-    
-    # return [CHUTE_DE_REGRA, chute]
+    return ["NUMBER", 67]

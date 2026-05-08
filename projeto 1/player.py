@@ -44,6 +44,186 @@ Para mais informações, verifique o README.md ou consulte um monitor.
 import time
 import random
 
+    
+    
+def pot_mod_algorithm(number_guesses, rule_guesses):
+    # hashmap para facilitar nas buscas
+    historico = {chute: (direcao, acerto) for chute, direcao, acerto in number_guesses}
+    
+    if len(number_guesses) == 0:
+        # Chuta 100 primeiro pq
+        # no mod tem plmns 1 numero pra esquerda e direita
+        # no pot a dist maxima é 99
+        # pro int é meio ruim, mas fzr oq 
+        return ["NUMBER", 100]
+
+    # Encontrar se temos os corretos
+    corretos = []
+    for chute, direcao, acerto in number_guesses:
+        if acerto:
+            corretos.append(chute)
+
+    # evita repetidos, no caso do mod pode acontecer de ter mais de um chute correto, mas eles seriam o mesmo numero
+    corretos = list(set(corretos)) 
+
+
+
+    # caso nn tenha chute correto, usa a direção q o 100 aponta     
+    if len(corretos) == 0:
+        if len(number_guesses) > 30: # distmax do mod é 50, ent chutamos um pouco mais vezes que a metade dele
+            print("Tentando POT")
+            pots_possiveis = []
+            for i in range(1, 400):
+                for j in range(2, 11):
+                    # i^j (potência)
+                    pots_possiveis.append((i**j, j))
+
+            for chute, direcao, acerto in number_guesses:
+                if direcao == "maior" and not acerto:
+                    pots_possiveis = [ (val, j) for (val, j) in pots_possiveis if val > chute ]
+                elif direcao == "menor" and not acerto:
+                    pots_possiveis = [ (val, j) for (val, j) in pots_possiveis if val < chute ]
+
+            pots_paraChutar = list(set([j for (val, j) in pots_possiveis]))
+            
+            # Remover os pots que já tentamos chutar na rules_guesses
+            pots_ja_chutados = [p1 for tipo, p1, p2 in rule_guesses if tipo == "pot"]
+            pots_paraChutar = [p for p in pots_paraChutar if p not in pots_ja_chutados]
+
+            if len(pots_paraChutar) > 0:
+                print("chutando POT", pots_paraChutar[0])
+                return ["RULE", ["pot", pots_paraChutar[0], 0]]
+            else:
+                print("INDO PARA INT")
+                return "VAI_PRO_INT" 
+            
+            
+        ultimo_chute, direcao_ultimo, _ = number_guesses[-1]
+        
+        # Testar inversão (estamos indo de 2 em 2)
+        if len(number_guesses) >= 2:
+            penultimo_chute, direcao_penultimo, _ = number_guesses[-2]
+            if direcao_ultimo != direcao_penultimo and (ultimo_chute - penultimo_chute) != 0:
+                if direcao_penultimo == "maior":
+                    return ["NUMBER", ultimo_chute - 1]
+                else:
+                    return ["NUMBER", ultimo_chute + 1]
+
+        # Continuar de 2 em 2
+        if direcao_ultimo == "maior":
+            return ["NUMBER", ultimo_chute + 2]
+        else:
+            return ["NUMBER", ultimo_chute - 2]
+
+
+    if len(corretos) == 1: # com um procura outro
+        # Pega o n correto
+        n_correto = corretos[0]
+        # testamos n+1 e n-1
+        if (n_correto + 1) not in historico:
+            return ["NUMBER", n_correto + 1]
+        if (n_correto - 1) not in historico:
+            return ["NUMBER", n_correto - 1]
+            
+        # Vemos o resultado deles
+        dir_mais, acerto_mais = historico[n_correto + 1]
+        dir_menos, acerto_menos = historico[n_correto - 1]
+        
+        if acerto_mais or acerto_menos:
+            # Vamos para o int
+            return "VAI_PRO_INT"
+            
+        else:
+            # Temos um correto e n+1 e n-1 não são corretos (não é do int)
+            # Então podemos já tentar adivinhar a regra POT
+            pots_possiveis = []
+            for base in range(1, 400):
+                for p in range(2, 11):
+                    pots_possiveis.append((base**p, p))
+
+            # Filtrar pelos chutes do number_guesses (incluindo o correto e os erros)
+            for chute, direcao, acerto in number_guesses:
+                if acerto:
+                    pots_possiveis = [ (val, p) for (val, p) in pots_possiveis if val == chute ]
+                elif direcao == "maior":
+                    pots_possiveis = [ (val, p) for (val, p) in pots_possiveis if val > chute ]
+                elif direcao == "menor":
+                    pots_possiveis = [ (val, p) for (val, p) in pots_possiveis if val < chute ]
+
+            pots_para_chutar = list(set([p for (val, p) in pots_possiveis]))
+            pots_ja_chutados = [p1 for tipo, p1, p2 in rule_guesses if tipo == "pot"]
+            pots_para_chutar = [p for p in pots_para_chutar if p not in pots_ja_chutados]
+
+            if len(pots_para_chutar) > 0:
+                print("chutando POT com 1 acerto", pots_para_chutar[0])
+                return ["RULE", ["pot", pots_para_chutar[0], 0]]
+            
+            # Se não sobrou nenhum pot, então vai buscar o segundo correto pro mod
+            dir_100 = historico.get(100, (None, None))[0]
+            procurando_2o_n = False
+            valor_busca = None
+            direcao_busca = None
+            qnt_2a_busca = 0
+            for chute, direcao, acerto in number_guesses:
+                # vê se tem chutes da direção contrario do primeiro
+                # correto
+                if dir_100 == "maior":
+                    if chute <= 100 and not acerto and (chute != 100 or number_guesses.count([chute, direcao, acerto]) > 1):
+                        # Pelo menos um chute menor ou igual a 100 que não seja o chute original do 100
+                        pass
+                    if chute < 100 and not acerto:
+                        procurando_2o_n = True
+                        direcao_busca = "menor"
+                        qnt_2a_busca += 1
+                elif dir_100 == "menor":
+                    if chute > 100 and not acerto:
+                        procurando_2o_n = True
+                        direcao_busca = "maior"
+                        qnt_2a_busca += 1
+
+            if not procurando_2o_n:
+                direcao_busca = "maior" if dir_100 == "menor" else "menor"
+                # O Pulo da otimização restaurado e corrigido 
+                # (100 aponta pro lado mais proximo, então a gente pula a mesma distancia + 1 para o outro lado)
+                valor_busca = 100 + (100 - n_correto)
+                
+                # Se eu quero ir para a esquerda ("menor"), tenho que DIMINUIR. Se for para a direita, tenho que SOMAR.
+                # O bug original de ficar preso no 100 era porque os sinais + e - estavam invertidos e te jogavam de volta.
+                if direcao_busca == "menor":
+                    valor_busca -= 1
+                elif direcao_busca == "maior":
+                    valor_busca += 1
+                
+                return ["NUMBER", valor_busca]
+
+            # chutamos igual no inicio porem reverso
+            ultimo_chute, direcao_ultimo, _ = number_guesses[-1]
+
+            if qnt_2a_busca >= 2: # verifica reversão
+                penultimo_chute, direcao_penultimo, _ = number_guesses[-2]
+                if direcao_ultimo != direcao_penultimo and (ultimo_chute - penultimo_chute) != 0:
+                    if direcao_penultimo == "maior":
+                        return ["NUMBER", ultimo_chute - 1]
+                    else:
+                        return ["NUMBER", ultimo_chute + 1]
+
+            # Continuar de 2 em 2 usando a direcao_busca
+            if direcao_busca == "maior":
+                return ["NUMBER", ultimo_chute + 2]
+            else:
+                return ["NUMBER", ultimo_chute - 2]
+    
+    if len(corretos) == 2:
+        # temos os 2 n, agora é só chutar a regra certa
+        print("certos",corretos[0], corretos[1])
+        k_certo = abs(corretos[0] - corretos[1])
+        r1_certo = corretos[0] % k_certo
+        r2_certo = corretos[1] % k_certo
+        if r1_certo == r2_certo:
+            return ["RULE", ["mod", k_certo, r1_certo]]
+        else:
+            raise(Exception("ERRO, DOIS CORRETOS COM RESTOS DIFERENTES, MAS AINDA ASSIM CHEGOU AQUI"))
+
 def mod_algorithm(number_guesses, rule_guesses):
     # Implementação do algoritmo para chutar regras do tipo "mod"
     # temporario:
@@ -155,50 +335,38 @@ def int_algorithm(number_guesses, rule_guesses):
     return ["RULE", ["int", menor_c, maior_c]]
 
 
-        
-    
-        
+# função que tenta adivinhar regras quando regras repitidas
+# são chutadas, evitando erros e aumentando a precisão (que já ta alta)
+def quando_congelar(number_guesses, rule_guesses):
+    regra_duplicada = None
 
 
-    
 
-    
-
-
-    
-## estrategia: um ser humano, vou botar print e input para ler o chute do jogador, e retornar o chute lido
 def player(number_guesses, rule_guesses):
-    qnt_rule = len(rule_guesses)
 
-    if len(number_guesses) < 10:
-        # nos primeiros 10 chutes, chutamos numeros aleatorios para ter uma ideia da regra
-        # isso é temporario pq só tem o INT por enquanto ent ele nn tem info nenhuma pra usar
-        chute = random.randint(1, 100_000)
-        return ["NUMBER", chute]
+    # Verifica se já pulamos pro int verificando se o chute falso de mod já foi dado
+    ja_pulou_pro_int = False
+    regrasPassadasHashTupla = set()
 
-
-
-    if qnt_rule == 0: 
-        #verifica se a regra aplica pra todos os numeros
-        return ["RULE", ["mod", 1, 0]]
+    for r in rule_guesses:
+        # Se a regra for mod 1 0, é o nosso sinal para ir pro int_algorithm
+        if r[0] == "mod" and r[1] == 1 and r[2] == 0:
+            ja_pulou_pro_int = True
+        
+        if (r[0], r[1], r[2]) in regrasPassadasHashTupla:
+            print("Regra repetida detectada, tentando adivinhar a regra certa para evitar congelamento")
+            return quando_congelar(number_guesses, rule_guesses)
     
-    # A partir daqui nós fazemos um chute de regra para
-    # cada regra, caso seja descoberto que não é a regra
-    # um chute de regra qualquer é feito para passar para
-    # testar a proxima regra.
-    # OBS: Igor, pode trocar o MOD pelo POT, dependendo do seu algoritimo
-
-    if qnt_rule == 1:
-        chute = mod_algorithm(number_guesses, rule_guesses)
-        if chute != None:
-            return chute
-    
-    if qnt_rule == 2:
-        chute = pot_algorithm(number_guesses, rule_guesses)
+         
+    if not ja_pulou_pro_int:
+        chute = pot_mod_algorithm(number_guesses, rule_guesses)
+        if chute == "VAI_PRO_INT":
+            # Aqui fazemos um chute de regra aleatório para forçar o erro e pular para a regra 'int' no próximo turno
+            return ["RULE", ["mod", 1, 0]]
         if chute != None:
             return chute
 
-    if qnt_rule >= 3:
+    else:
         chute = int_algorithm(number_guesses, rule_guesses)
         if chute != None:
             return chute

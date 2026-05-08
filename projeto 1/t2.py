@@ -54,8 +54,11 @@ def get_debug_config():
 
     max_games = prompt_int("Quantidade de partidas", 1000)
     max_attempts = prompt_int("Máximo de tentativas por partida", 1000)
+    
+    save_mode = prompt_text("Salvar apenas erros? (s/n)", "n").lower()
+    save_only_errors = save_mode in {"s", "sim", "yes", "y"}
 
-    return rule_type, max_games, max_attempts
+    return rule_type, max_games, max_attempts, save_only_errors
 
 
 def choose_rule(rule_type="random"):
@@ -96,20 +99,31 @@ def results_from_list(values):
 def format_guess_entry(guess):
     """Formata um chute para gravação no arquivo de log."""
     if guess[0] == "NUMBER":
+        if len(guess) >= 3 and guess[2]:
+            return f"NUMBER {guess[1]}*"
         return f"NUMBER {guess[1]}"
 
     rule_type, p1, p2 = guess[1]
     return f"RULE {rule_type} {p1} {p2}"
 
 
-def write_game_log(game_index, rule_description, guess_log):
-    """Salva os chutes de uma partida em um arquivo de texto."""
+def write_game_log(game_index, rule_description, guess_log, win, error_message=None, save_only_errors=False):
+    """Salva os chutes de uma partida em um arquivo de texto.
+    
+    Se save_only_errors for True, apenas salva partidas perdidas ou com erro.
+    """
+    if save_only_errors and win:
+        return
+    
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = OUTPUT_DIR / f"partida_{game_index:04d}.txt"
+    suffix = "c" if win else "e"
+    file_path = OUTPUT_DIR / f"partida_{game_index:04d}_{suffix}.txt"
     with file_path.open("w", encoding="utf-8") as file:
         file.write(f"REGRA: {rule_description}\n")
         for step, guess in enumerate(guess_log, start=1):
             file.write(f"{step:04d}. {format_guess_entry(guess)}\n")
+        if error_message is not None:
+            file.write(f"ERRO: {error_message}\n")
 
 
 def clean_output_dir():
@@ -137,36 +151,41 @@ def play_one_game(max_attempts, rule_type, game_index=None):
     guess_log = []
     attempts = 0
 
-    while attempts < max_attempts:
-        attempts += 1
-        guess = verify_player_guess(player.player(number_guesses, rule_guesses))
+    try:
+        while attempts < max_attempts:
+            attempts += 1
+            guess = verify_player_guess(player.player(number_guesses, rule_guesses))
 
-        if guess[0] == "NUMBER":
-            n = guess[1]
-            d = direction(n, numbers)
-            hit = n in numbers
-            number_guesses.append([n, d, hit])
+            if guess[0] == "NUMBER":
+                n = guess[1]
+                d = direction(n, numbers)
+                hit = n in numbers
+                number_guesses.append([n, d, hit])
+                guess_log.append(["NUMBER", n, hit])
+                continue
+
+            rule_type_guess, p1, p2 = guess[1]
+            if rule_type_guess == "mod":
+                guessed_rule = {"type": "mod", "k": p1, "r": p2}
+            elif rule_type_guess == "pot":
+                guessed_rule = {"type": "pot", "p": p1}
+            else:
+                guessed_rule = {"type": "int", "a": p1, "b": p2}
+
+            rule_guesses.append([rule_type_guess, p1, p2])
             guess_log.append(guess)
-            continue
-
-        rule_type_guess, p1, p2 = guess[1]
-        if rule_type_guess == "mod":
-            guessed_rule = {"type": "mod", "k": p1, "r": p2}
-        elif rule_type_guess == "pot":
-            guessed_rule = {"type": "pot", "p": p1}
-        else:
-            guessed_rule = {"type": "int", "a": p1, "b": p2}
-
-        rule_guesses.append([rule_type_guess, p1, p2])
-        guess_log.append(guess)
-        if guess_rule(guessed_rule, rule_info):
-            return {
-                "win": True,
-                "attempts": attempts,
-                "number_guesses": len(number_guesses),
-                "rule_description": rule_description,
-                "guess_log": guess_log,
-            }
+            if guess_rule(guessed_rule, rule_info):
+                return {
+                    "win": True,
+                    "attempts": attempts,
+                    "number_guesses": len(number_guesses),
+                    "rule_description": rule_description,
+                    "guess_log": guess_log,
+                }
+    except Exception as error:
+        if game_index is not None:
+            write_game_log(game_index, rule_description, guess_log, False, error_message=str(error))
+        raise
 
     return {
         "win": False,
@@ -179,7 +198,7 @@ def play_one_game(max_attempts, rule_type, game_index=None):
 
 def main():
     """Executa o torneio e imprime métricas agregadas."""
-    rule_type, max_games, max_attempts = get_debug_config()
+    rule_type, max_games, max_attempts, save_only_errors = get_debug_config()
     clean_output_dir()
 
     attempts = []
@@ -190,7 +209,7 @@ def main():
         result = play_one_game(max_attempts=max_attempts, rule_type=rule_type, game_index=game_index)
         attempts.append(result["attempts"])
         number_guess_counts.append(result["number_guesses"])
-        write_game_log(game_index, result["rule_description"], result["guess_log"])
+        write_game_log(game_index, result["rule_description"], result["guess_log"], result["win"], save_only_errors=save_only_errors)
         if result["win"]:
             wins += 1
 

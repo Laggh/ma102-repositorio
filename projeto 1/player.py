@@ -334,35 +334,36 @@ def int_algorithm(number_guesses, rule_guesses):
     # Se chegou aqui, é pq tanto a parte de cima quanto a parte de baixo estão certinhas, então o intervalo entre menor_c e maior_c é o intervalo correto
     return ["RULE", ["int", menor_c, maior_c]]
 
-
-# função que tenta adivinhar regras quando regras repitidas
-# são chutadas, evitando erros e aumentando a precisão (que já ta alta)
-def quando_congelar(number_guesses, rule_guesses):
-    regra_duplicada = None
-
-
+def quando_incorreto(number_guesses, rule_guesses, chute):
+    return ["NUMBER", 67]
 
 def player(number_guesses, rule_guesses):
 
     # Verifica se já pulamos pro int verificando se o chute falso de mod já foi dado
     ja_pulou_pro_int = False
-    regrasPassadasHashTupla = set()
-
+    # ja chutou n mod 2 = 1,
+    mod_2_igual_1_chutado = False
     for r in rule_guesses:
         # Se a regra for mod 1 0, é o nosso sinal para ir pro int_algorithm
         if r[0] == "mod" and r[1] == 1 and r[2] == 0:
             ja_pulou_pro_int = True
         
-        if (r[0], r[1], r[2]) in regrasPassadasHashTupla:
-            print("Regra repetida detectada, tentando adivinhar a regra certa para evitar congelamento")
-            return quando_congelar(number_guesses, rule_guesses)
+        if r[0] == "mod" and r[1] == 2 and r[2] == 1:
+            mod_2_igual_1_chutado = True
     
-         
+    if not mod_2_igual_1_chutado:
+        # chutamos ele pq ele faz da erro
+        return ["RULE", ["mod", 2, 1]]
+            
     if not ja_pulou_pro_int:
         chute = pot_mod_algorithm(number_guesses, rule_guesses)
         if chute == "VAI_PRO_INT":
             # Aqui fazemos um chute de regra aleatório para forçar o erro e pular para a regra 'int' no próximo turno
             return ["RULE", ["mod", 1, 0]]
+        
+        if chute[0] == "NUMBER" and chute[1] < 1 and chute[1] > 100_000:
+            return quando_incorreto(number_guesses, rule_guesses, chute)
+        
         if chute != None:
             return chute
 

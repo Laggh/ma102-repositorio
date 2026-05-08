@@ -54,11 +54,17 @@ def get_debug_config():
 
     max_games = prompt_int("Quantidade de partidas", 1000)
     max_attempts = prompt_int("Máximo de tentativas por partida", 1000)
-    
+
     save_mode = prompt_text("Salvar apenas erros? (s/n)", "n").lower()
     save_only_errors = save_mode in {"s", "sim", "yes", "y"}
 
-    return rule_type, max_games, max_attempts, save_only_errors
+    save_long_mode = prompt_text("Salvar partidas com mais que M chutes? (s/n)", "n").lower()
+    save_only_long = save_long_mode in {"s", "sim", "yes", "y"}
+    long_threshold = 100
+    if save_only_long:
+        long_threshold = prompt_int("Valor de M (limiar de chutes)", 100)
+
+    return rule_type, max_games, max_attempts, save_only_errors, save_only_long, long_threshold
 
 
 def choose_rule(rule_type="random"):
@@ -107,17 +113,21 @@ def format_guess_entry(guess):
     return f"RULE {rule_type} {p1} {p2}"
 
 
-def write_game_log(game_index, rule_description, guess_log, win, error_message=None, save_only_errors=False):
+def write_game_log(game_index, rule_description, guess_log, win, error_message=None, save_only_errors=False, save_only_long=False, long_threshold=0, number_guesses=0):
     """Salva os chutes de uma partida em um arquivo de texto.
-    
-    Se save_only_errors for True, apenas salva partidas perdidas ou com erro.
+
+    Se `save_only_errors` for True, apenas salva partidas perdidas ou com erro.
+    Se `save_only_long` for True, apenas salva partidas cujo número de chutes excede `long_threshold`.
     """
     if save_only_errors and win:
         return
-    
+    if save_only_long and number_guesses <= long_threshold:
+        return
+
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     suffix = "c" if win else "e"
-    file_path = OUTPUT_DIR / f"partida_{game_index:04d}_{suffix}.txt"
+    slow_marker = "l" if number_guesses > long_threshold else ""
+    file_path = OUTPUT_DIR / f"partida_{game_index:04d}{slow_marker}_{suffix}.txt"
     with file_path.open("w", encoding="utf-8") as file:
         file.write(f"REGRA: {rule_description}\n")
         for step, guess in enumerate(guess_log, start=1):
@@ -198,7 +208,7 @@ def play_one_game(max_attempts, rule_type, game_index=None):
 
 def main():
     """Executa o torneio e imprime métricas agregadas."""
-    rule_type, max_games, max_attempts, save_only_errors = get_debug_config()
+    rule_type, max_games, max_attempts, save_only_errors, save_only_long, long_threshold = get_debug_config()
     clean_output_dir()
 
     attempts = []
@@ -209,7 +219,16 @@ def main():
         result = play_one_game(max_attempts=max_attempts, rule_type=rule_type, game_index=game_index)
         attempts.append(result["attempts"])
         number_guess_counts.append(result["number_guesses"])
-        write_game_log(game_index, result["rule_description"], result["guess_log"], result["win"], save_only_errors=save_only_errors)
+        write_game_log(
+            game_index,
+            result["rule_description"],
+            result["guess_log"],
+            result["win"],
+            save_only_errors=save_only_errors,
+            save_only_long=save_only_long,
+            long_threshold=long_threshold,
+            number_guesses=result["number_guesses"],
+        )
         if result["win"]:
             wins += 1
 

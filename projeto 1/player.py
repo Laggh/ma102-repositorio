@@ -334,15 +334,54 @@ def int_algorithm(number_guesses, rule_guesses):
     # Se chegou aqui, é pq tanto a parte de cima quanto a parte de baixo estão certinhas, então o intervalo entre menor_c e maior_c é o intervalo correto
     return ["RULE", ["int", menor_c, maior_c]]
 
+# roda quando tem regra repetida
+def quando_congela(number_guesses, rule_guesses, regra):
+    tipo, p1, p2 = regra
+
+    if tipo == "mod":
+        corretos = []
+        for chute, direcao, acerto in number_guesses:
+            if acerto:
+                corretos.append(chute)
+        if len(corretos) == 2:
+            # temos 2 ns e a regra certa foi pulada, vamos resolver
+
+            for i in range(2, 101):
+                if corretos[0] % i == corretos[1] % i:
+                    para_chutar = ["mod", i, corretos[0] % i]
+                    if para_chutar not in rule_guesses:
+                        return ["RULE", para_chutar]
+            
+            
+
+
+        return ["RULE", ["mod", p1, p2]]
+
+
 def quando_incorreto(number_guesses, rule_guesses, chute):
     return ["NUMBER", 67]
 
 def player(number_guesses, rule_guesses):
+    regras_hash = dict()
+    regra_repetida = None
 
+    for rg in rule_guesses:
+        tipo, p1, p2 = rg
+        if (tipo, p1, p2) in regras_hash:
+            regra_repetida = (tipo, p1, p2)
+        else:
+            regras_hash[(tipo, p1, p2)] = True
+
+    
+    if regra_repetida is not None:
+        print("Regra repetida detectada:", regra_repetida)
+        return quando_congela(number_guesses, rule_guesses, regra_repetida)
+    
     # Verifica se já pulamos pro int verificando se o chute falso de mod já foi dado
     ja_pulou_pro_int = False
     # ja chutou n mod 2 = 1,
     mod_2_igual_1_chutado = False
+    mod_2_igual_0_chutado = False
     for r in rule_guesses:
         # Se a regra for mod 1 0, é o nosso sinal para ir pro int_algorithm
         if r[0] == "mod" and r[1] == 1 and r[2] == 0:
@@ -350,10 +389,17 @@ def player(number_guesses, rule_guesses):
         
         if r[0] == "mod" and r[1] == 2 and r[2] == 1:
             mod_2_igual_1_chutado = True
-    
+        
+        if r[0] == "mod" and r[1] == 2 and r[2] == 0:
+            mod_2_igual_0_chutado = True
+
     if not mod_2_igual_1_chutado:
         # chutamos ele pq ele faz da erro
         return ["RULE", ["mod", 2, 1]]
+
+    if not mod_2_igual_0_chutado:
+        # chutamos ele pq ele faz da erro
+        return ["RULE", ["mod", 2, 0]]
             
     if not ja_pulou_pro_int:
         chute = pot_mod_algorithm(number_guesses, rule_guesses)
@@ -361,7 +407,7 @@ def player(number_guesses, rule_guesses):
             # Aqui fazemos um chute de regra aleatório para forçar o erro e pular para a regra 'int' no próximo turno
             return ["RULE", ["mod", 1, 0]]
         
-        if chute[0] == "NUMBER" and chute[1] < 1 and chute[1] > 100_000:
+        if chute[0] == "NUMBER" and (chute[1] < 1 or chute[1] > 100_000):
             return quando_incorreto(number_guesses, rule_guesses, chute)
         
         if chute != None:
@@ -370,6 +416,8 @@ def player(number_guesses, rule_guesses):
     else:
         chute = int_algorithm(number_guesses, rule_guesses)
         if chute != None:
+            if chute[0] == "NUMBER" and (chute[1] < 1 or chute[1] > 100_000):
+                return quando_incorreto(number_guesses, rule_guesses, chute)
             return chute
     
     return ["NUMBER", 67]

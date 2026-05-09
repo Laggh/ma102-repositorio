@@ -1,8 +1,8 @@
 ### TODO: PREENCHA SUAS INFORMAÇÕES AQUI ###
-# Nome #01 (quem entregou o código):    [NOME COMPLETO #01] 
-# RA #01 (quem entregou o código):      [RA #01]
-# Nome #02:                             [NOME COMPLETO #02]
-# RA #02:                               [RA #02]
+# Nome #01 (quem entregou o código):    Igor Henrique de Abreu 
+# RA #01 (quem entregou o código):      183538
+# Nome #02:                             Renan Andrade dos Santos
+# RA #02:                               321330
 
 """Implemente aqui o seu código para adivinhar a regra.
 

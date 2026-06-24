@@ -1,0 +1,32 @@
+import argparse
+from tournament import run_tournament
+
+parser = argparse.ArgumentParser(description="Ganhe o torneio de truco!")
+
+# Número de mãos, 1000 por padrão
+parser.add_argument(
+    "--num-matches",
+    "-n",
+    type=int,
+    default=1000,
+    help="Número de mãos em uma partida entre duas duplas",
+)
+
+# Velocidade do jogo, 1 por padrão
+parser.add_argument(
+    "--speed",
+    "-s",
+    type=float,
+    default=1,
+    help="Velocidade de cada jogada",
+)
+
+# Função principal
+
+def main(number_of_matches, speed):
+    # Começa o torneio
+    run_tournament(number_of_matches, speed, 5 * speed)
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(args.num_matches, args.speed)

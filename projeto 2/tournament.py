@@ -149,7 +149,7 @@ def run_match(judge, pair1, pair2, number, speed, team_names):
     
     # Loop da série de jogos
     for i in range(number):
-        print(f"-- Iniciando jogo (até 12 pontos): {i+1}")
+        #print(f"-- Iniciando jogo (até 12 pontos): {i+1}")
         winner = play_game(judge, players, speed, first, team_names)
         
         if winner is not None:
@@ -157,7 +157,7 @@ def run_match(judge, pair1, pair2, number, speed, team_names):
             wins[idx_dupla] += 1
             p1 = players[idx_dupla].name
             p2 = players[idx_dupla + 2].name
-            print(f"-- Fim do jogo {i+1}. Vencedores: {p1} e {p2}!")
+            #print(f"-- Fim do jogo {i+1}. Vencedores: {p1} e {p2}!")
         
         # O próximo jogador à esquerda começa distribuindo na próxima partida
         first = (first + 1) % 4

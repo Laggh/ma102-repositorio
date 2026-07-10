@@ -134,7 +134,7 @@ class ReverseGreedyPlayer(Player):
                     round1_plays.append(plays)
             t0_max = 0
             t1_max = 0
-            
+            round1_plays = round1_plays[:4]
             for p_idx, card, _ in round1_plays:
                 val = card_value(card, top_card)
                 if p_idx in (0, 2):
@@ -198,8 +198,7 @@ class ReverseGreedyPlayer(Player):
                         break
                     cards_found += 1
         return 0
-    
-class AnalyticalPlayer(Player):
+
 
     def _get_sorted_hand(self, top_card):
         """Retorna as cartas ordenadas do menor para o maior valor."""
@@ -254,7 +253,7 @@ class AnalyticalPlayer(Player):
             if len(sorted_cards) == 3:
                 mid_card = sorted_cards[1]
                 # Se a carta do meio já é razoavelmente forte (ex: um 2 ou 3), usamos ela para sondar.
-                if card_value(mid_card, top_card) >= card_value('2D', top_card): # Assumindo um baseline de carta '2'
+                if card_value(mid_card, top_card) >= 108: # Baseline de carta '2' (100 + RANK_ORDER.index('2') = 108)
                     chosen_card = mid_card
                 else:
                     chosen_card = best_card

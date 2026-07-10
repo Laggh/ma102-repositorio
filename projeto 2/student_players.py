@@ -1,8 +1,9 @@
 ### TODO: PREENCHA SUAS INFORMAÇÕES AQUI ###
-# Nome #01 (quem entregou o código):    [NOME COMPLETO #01] 
-# RA #01 (quem entregou o código):      [RA #01]
-# Nome #02:                             [NOME COMPLETO #02]
-# RA #02:                               [RA #02]
+# Nome #01: Renan Andrade dos Santos
+# RA #01: 321330      
+# Nome #02: Igor Henrique de Abreu
+# RA #02 183538
+                  
 import os
 import json
 
@@ -99,6 +100,8 @@ def gerar_baralho_completo():
     for carta in generate_deck():
         baralho.append(carta)
     return baralho
+    #67
+
 
 def chance_carta_ser_mais_forte(cartas_possiveis_adversarios, carta_especifica, top_card):
     if not cartas_possiveis_adversarios or carta_especifica is None:
@@ -212,10 +215,10 @@ def avaliar_mao(mao, top_card, cartas_possiveis_adversarios, venceu_primeira_rod
 # ir com tudo se perder a primeira mão
 
 # se tiver manilha, deixar pro final 
-class NonePlayer(Player):
+class botComPesos(Player):
     # Se estiver dúvida sobre como começar olhe os players prontos em basic_players.py e o ReadMe
-    def __init__(self):
-        super().__init__(0, "Ninguém") # Nome do Jogador 
+    def __init__(self,ra,nome,image):
+        super().__init__(ra, nome,image) # Nome do Jogador 
         self.play_hist_jogada = []
         self.cartas_possiveis_adversarios = []
         self.jogadas_com_carta = []
@@ -358,7 +361,7 @@ class NonePlayer(Player):
 
     def jogarRodada1(self, top_card):
         # Lógica de pedir truco na primeira rodada
-        decision = 1
+        decision = 1 #1 normal, 2 truco
         manilhas = []
         for c in self._cards:
             if card_value(c, top_card) >= 1000:
@@ -483,11 +486,51 @@ class NonePlayer(Player):
         if self.valor_maior is None:
             return 0
 
-        valor_necessario_para_aceitar = 109 # 100 + RANK_ORDER.index('3')
+        meu_time = self.position % 2
+
+        # 1. Verificar se a vitória da rodada está garantida ou muito provável
+        vitoria_garantida = False
+
+        # Se o parceiro jogou o Zap (1003)
+        if self.time_carta_mais_forte_rodada == meu_time:
+            if self.carta_mais_forte_rodada is not None:
+                if card_value(self.carta_mais_forte_rodada, top_card) == 1003:
+                    vitoria_garantida = True
+
+        # Se somos os últimos a jogar
+        if self.posicao_mesa == 4:
+            if self.time_carta_mais_forte_rodada == meu_time:
+                vitoria_garantida = True
+            else:
+                if self.carta_mais_forte_rodada is not None:
+                    if self.valor_maior > card_value(self.carta_mais_forte_rodada, top_card):
+                        vitoria_garantida = True
+
+        if vitoria_garantida:
+            if self.valor_maior >= 1000:
+                if self.valor_mao_atual < 9:
+                    return 2
+            return 1
+
+        # 2. Se o parceiro tem qualquer manilha na mesa e ainda faltam adversários jogarem, aceitamos por segurança
+        if self.time_carta_mais_forte_rodada == meu_time:
+            if self.carta_mais_forte_rodada is not None:
+                if card_value(self.carta_mais_forte_rodada, top_card) >= 1000:
+                    return 1
+
+        # 3. Regra geral de aceitação por valor de carta
+        if self.rodada_atual == 1:
+            valor_necessario_para_aceitar = 109 # Pelo menos um 3 (109) ou Manilha (>=1000)
+        else:
+            if self.venceu_primeira_rodada is True:
+                valor_necessario_para_aceitar = 107 # Permite aceitar com 'A' (107) ou '2' (108)
+            else:
+                valor_necessario_para_aceitar = 109
 
         if self.valor_maior < valor_necessario_para_aceitar:
             return 0
 
+        # Se você tem Manilha, aumente (Retruco), a não ser que já esteja valendo 9 ou 12.
         if self.valor_maior >= 1000:
             if self.valor_mao_atual < 9:
                 return 2
@@ -503,7 +546,6 @@ class NonePlayer(Player):
 
         return True
 
-    
     # Função para retornar o que você vai jogar em determinada mão
     def play(self, top_card, play_hist, score_hist):
         #self.printState(top_card, play_hist, score_hist)
@@ -539,12 +581,12 @@ class NonePlayer(Player):
 
 # Função que define o nome da dupla:
 def pair_name():
-    return "algum nome"  # Defina aqui o nome da sua dupla
+    return "K-tarrados"  # Defina aqui o nome da sua dupla
 
 
 # Função que cria a dupla:
 def create_pair():
-    return (NonePlayer(), NonePlayer())  # Defina aqui a dupla de jogadores. Deve ser uma tupla com dois jogadores.
+    return (botComPesos(321330,"Renan Andrade dos Santos", "img/hellnah.jpg"), botComPesos(183538,"Igor Henrique de Abreu","img/walterWhiteOculos.jpg"))  # Defina aqui a dupla de jogadores. Deve ser uma tupla com dois jogadores.
 
 
 if __name__ == "__main__":

@@ -25,6 +25,10 @@ QNT_PARA_SALVAR = 100
 VARIAVEIS_MUDADAS_AO_MESMO_TEMPO = 1
 QUANTIA_THREADS = max(2, (os.cpu_count() or 2) // 2)
 
+# Configuração para ponderar o peso de um bot específico na avaliação
+BOT_ALVO = None        # Ex: "ReverseGreedy" (None para avaliar contra todos igualmente)
+PESO_BOT_ALVO = 1.0    # Ex: 5.0 (multiplica vitórias/derrotas deste bot por este peso)
+
 LIMITES_PADRAO = {
     "PESO_MEDIA_CHANCE_PADRAO": (0.0, 1.0),
     "PESO_MEDIA_VALOR_PADRAO": (0.0, 1.0),
@@ -134,6 +138,40 @@ def copiar_arquivos_execucao(diretorio_destino):
 def extrair_porcentagem(saida):
     if not saida:
         return 0.0
+
+    confrontos = re.findall(
+        r"RESULTADO DO CONFRONTO: (.*?) fez (\d+) vit.rias, e (.*?) fez (\d+) vit.rias\.",
+        saida
+    )
+
+    if confrontos:
+        soma_vitorias = 0.0
+        soma_derrotas = 0.0
+        for time1, vits1_str, time2, vits2_str in confrontos:
+            vits1 = int(vits1_str)
+            vits2 = int(vits2_str)
+
+            if time1 == NOME_BOT or time2 == NOME_BOT:
+                if time1 == NOME_BOT:
+                    oponente = time2
+                    vits = vits1
+                    ders = vits2
+                else:
+                    oponente = time1
+                    vits = vits2
+                    ders = vits1
+
+                peso = 1.0
+                if BOT_ALVO is not None:
+                    if oponente == BOT_ALVO:
+                        peso = PESO_BOT_ALVO
+
+                soma_vitorias += vits * peso
+                soma_derrotas += ders * peso
+
+        total_jogos = soma_vitorias + soma_derrotas
+        if total_jogos > 0:
+            return round((soma_vitorias / total_jogos) * 100, 2)
 
     padrao = rf"{re.escape(NOME_BOT)} - CONFRONTOS\[.*?\] - JOGOS\[(\d+) Vit.rias, (\d+) Derrotas"
     match = re.search(padrao, saida)

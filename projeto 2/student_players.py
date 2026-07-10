@@ -51,7 +51,9 @@ def carregar_pesos():
 PESOS = carregar_pesos()
 
 
-def peso_atual(nome_peso):
+def peso_atual(nome_peso, padrao=None):
+    if nome_peso not in PESOS:
+        return padrao
     valor = PESOS[nome_peso]
     if isinstance(valor, list) or isinstance(valor, tuple):
         return valor[0]
@@ -89,6 +91,7 @@ RESP_LIMIAR_AUMENTAR = peso_atual("RESP_LIMIAR_AUMENTAR")
 VALOR_MANILHA_BASE = peso_atual("VALOR_MANILHA_BASE")
 VALOR_MANILHA_DIVISOR = peso_atual("VALOR_MANILHA_DIVISOR")
 VALOR_COMUM_DIVISOR = peso_atual("VALOR_COMUM_DIVISOR")
+RDD1_VALOR_MINIMO_MEDIANA = peso_atual("RDD1_VALOR_MINIMO_MEDIANA", 104.0)
 
 # gera como coleção pra ser mais facil de achar
 def gerar_baralho_completo():
@@ -354,37 +357,67 @@ class NonePlayer(Player):
                 self.venceu_primeira_rodada = (melhor_time == (self.position % 2))
 
     def jogarRodada1(self, top_card):
-        # 1: Joga mais forte
+        # Lógica de pedir truco na primeira rodada
+        decision = 1
+        manilhas = []
+        for c in self._cards:
+            if card_value(c, top_card) >= 1000:
+                manilhas.append(c)
+
+        has_manilha = False
+        if len(manilhas) >= 1:
+            has_manilha = True
+
+        has_three_or_another_manilha = False
+        if len(manilhas) >= 2:
+            has_three_or_another_manilha = True
+        elif len(manilhas) == 1:
+            for c in self._cards:
+                if c != manilhas[0]:
+                    if c[0] == '3':
+                        has_three_or_another_manilha = True
+
+        if self.pode_pedir_truco():
+            if has_manilha:
+                if has_three_or_another_manilha:
+                    decision = 2
+
+        # 1: Sendo o mão, joga a sua carta mediana (do meio) caso ela seja minimamente forte
         if self.posicao_mesa == 1:
-            return 1, self.carta_maior
+            sorted_cards = sorted(self._cards, key=lambda c: card_value(c, top_card))
+            if len(sorted_cards) == 3:
+                mid_card = sorted_cards[1]
+                if card_value(mid_card, top_card) >= RDD1_VALOR_MINIMO_MEDIANA:
+                    return decision, mid_card
+            return decision, self.carta_maior
 
         # 2: Tenta ganhar, se não consegue descarta
         if self.posicao_mesa == 2:
             if self.carta_mais_forte_rodada is not None and self.valor_maior is not None:
                 if self.valor_maior > card_value(self.carta_mais_forte_rodada, top_card):
-                    return 1, self.carta_maior
-            return 1, self.carta_menor
+                    return decision, self.carta_maior
+            return decision, self.carta_menor
 
         # 3: Tenta ganhar, se não consegue descarta
         # Pode descartar se o aliado estiver ganhando
         if self.posicao_mesa == 3:
             if self.aliado_esta_ganhando:
-                return 1, self.carta_menor
+                return decision, self.carta_menor
 
             if self.carta_mais_forte_rodada is not None and self.valor_maior is not None:
                 if self.valor_maior > card_value(self.carta_mais_forte_rodada, top_card):
-                    return 1, self.carta_maior
-            return 1, self.carta_menor
+                    return decision, self.carta_maior
+            return decision, self.carta_menor
 
         # 4: Tenta ganhar, se não consegue descarta
         # Pode descartar se o aliado estiver ganhando
         if self.posicao_mesa == 4:
             if self.carta_mais_forte_rodada is not None and self.valor_maior is not None:
                 if self.valor_maior > card_value(self.carta_mais_forte_rodada, top_card):
-                    return 1, self.carta_maior
-            return 1, self.carta_menor
+                    return decision, self.carta_maior
+            return decision, self.carta_menor
 
-        return 1, self.carta_menor
+        return decision, self.carta_menor
 
     def jogarRodada2(self, top_card):
         chance_carta_maior = chance_carta_ser_mais_forte(
@@ -401,17 +434,17 @@ class NonePlayer(Player):
         # Venceu: pensa sobre trucar e joga forte
         # porem não tenta tão forte pq tem a terceira
         if self.venceu_primeira_rodada:
-            avaliacao_mao = avaliar_mao(
-                self._cards,
-                top_card,
-                self.cartas_possiveis_adversarios,
-                venceu_primeira_rodada=self.venceu_primeira_rodada,
-            )
+            decision = 1
+            if self.pode_pedir_truco():
+                is_three_or_manilha = False
+                if self.carta_maior[0] == '3':
+                    is_three_or_manilha = True
+                elif card_value(self.carta_maior, top_card) >= 1000:
+                    is_three_or_manilha = True
 
-            if avaliacao_mao >= RDD2_LIMIAR_PEDIR_TRUCO and self.posicao_mesa == 1:
-                return 2, self.carta_maior
-
-            return 1, self.carta_maior
+                if is_three_or_manilha:
+                    decision = 2
+            return decision, self.carta_maior
 
         # Perdeu: tenta ganhar de qualquer jeito
         # não tem outra chance alem dessa, então joga a melhor carta
@@ -430,37 +463,34 @@ class NonePlayer(Player):
         return 1, self.carta_menor
 
     def jogarRodada3(self, top_card):
-        chance_carta_maior = chance_carta_ser_mais_forte(
-            self.cartas_possiveis_adversarios,
-            self.carta_maior,
-            top_card,
-        )
+        decision = 1
+        if self.venceu_primeira_rodada:
+            if self.pode_pedir_truco():
+                is_three_or_manilha = False
+                if self.carta_maior[0] == '3':
+                    is_three_or_manilha = True
+                elif card_value(self.carta_maior, top_card) >= 1000:
+                    is_three_or_manilha = True
 
-        # Se a carta da terceira rodada estiver muito forte, vale tentar aumentar o valor da mão.
-        if chance_carta_maior >= RDD3_LIMIAR_PEDIR_TRUCO and self.ultimo_time_truco != (self.position % 2) and self.valor_mao_atual < 12:
-            return 2, self.carta_maior
-
-        # Caso contrário, só joga a carta e tenta fechar a mão sem arriscar demais.
-        return 1, self.carta_maior
+                if is_three_or_manilha:
+                    decision = 2
+        return decision, self.carta_maior
 
     def responderTruco(self, top_card):
-        avaliacao_mao = avaliar_mao(
-            self._cards,
-            top_card,
-            self.cartas_possiveis_adversarios,
-            venceu_primeira_rodada=self.venceu_primeira_rodada,
-        )
-
-        # para o caso de já estar em 12
-        # counterar o bot greedy, chato dms
         if self.valor_mao_atual >= 12:
             return 1
 
-        if avaliacao_mao < RESP_LIMIAR_CORRER:
+        if self.valor_maior is None:
             return 0
 
-        if avaliacao_mao >= RESP_LIMIAR_AUMENTAR:
-            return 2
+        valor_necessario_para_aceitar = 109 # 100 + RANK_ORDER.index('3')
+
+        if self.valor_maior < valor_necessario_para_aceitar:
+            return 0
+
+        if self.valor_maior >= 1000:
+            if self.valor_mao_atual < 9:
+                return 2
 
         return 1
 

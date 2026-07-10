@@ -1,97 +1,20 @@
 {
-  "NOME_DO_PESO": [
-    "atual",
-    "minimo",
-    "maximo"
-  ],
-  "PESO_MEDIA_CHANCE_PADRAO": [
-    0.7027,
-    0.0,
-    1.0
-  ],
-  "PESO_MEDIA_VALOR_PADRAO": [
-    0.3111,
-    0.0,
-    1.0
-  ],
-  "PESO_CHANCE_MANILHA": [
-    0.5,
-    0.0,
-    1.0
-  ],
-  "PESO_VALOR_MANILHA": [
-    0.5,
-    0.0,
-    1.0
-  ],
-  "BONUS_QTD_MANILHAS": [
-    0.2486,
-    0.0,
-    1.0
-  ],
-  "BONUS_MELHOR_MANILHA": [
-    0.5076,
-    0.0,
-    1.0
-  ],
-  "MULTIPLICADOR_MAO_MANILHA_3": [
-    1.0787,
-    0.0,
-    2.0
-  ],
-  "MULTIPLICADOR_MAO_BASE_2": [
-    1.095,
-    0.0,
-    2.0
-  ],
-  "MULTIPLICADOR_VENCEU_PRIMEIRA_RODADA": [
-    1.15,
-    0.0,
-    2.0
-  ],
-  "MULTIPLICADOR_PERDEU_PRIMEIRA_RODADA": [
-    0.9053,
-    0.0,
-    2.0
-  ],
-  "RDD2_LIMIAR_SUBSTITUIR_CARTA": [
-    0.0817,
-    0.0,
-    1.0
-  ],
-  "RDD2_LIMIAR_PEDIR_TRUCO": [
-    1.5752,
-    0.0,
-    3.0
-  ],
-  "RDD3_LIMIAR_PEDIR_TRUCO": [
-    0.7897,
-    0.0,
-    1.0
-  ],
-  "RESP_LIMIAR_CORRER": [
-    0.7541,
-    0.0,
-    1.0
-  ],
-  "RESP_LIMIAR_AUMENTAR": [
-    1.6769,
-    0.0,
-    3.0
-  ],
-  "VALOR_MANILHA_BASE": [
-    1.0214,
-    0.0,
-    2.0
-  ],
-  "VALOR_MANILHA_DIVISOR": [
-    8.6151,
-    1.0,
-    100.0
-  ],
-  "VALOR_COMUM_DIVISOR": [
-    104.5818,
-    1.0,
-    1000.0
-  ]
+  "PESO_MEDIA_CHANCE_PADRAO": 0.6996,
+  "PESO_MEDIA_VALOR_PADRAO": 0.3016,
+  "PESO_CHANCE_MANILHA": 0.4872,
+  "PESO_VALOR_MANILHA": 0.4948,
+  "BONUS_QTD_MANILHAS": 0.2459,
+  "BONUS_MELHOR_MANILHA": 0.4878,
+  "MULTIPLICADOR_MAO_MANILHA_3": 1.078,
+  "MULTIPLICADOR_MAO_BASE_2": 1.1179,
+  "MULTIPLICADOR_VENCEU_PRIMEIRA_RODADA": 1.15,
+  "MULTIPLICADOR_PERDEU_PRIMEIRA_RODADA": 0.9,
+  "RDD2_LIMIAR_SUBSTITUIR_CARTA": 0.1,
+  "RDD2_LIMIAR_PEDIR_TRUCO": 1.55,
+  "RDD3_LIMIAR_PEDIR_TRUCO": 0.79,
+  "RESP_LIMIAR_CORRER": 0.7452,
+  "RESP_LIMIAR_AUMENTAR": 1.6293,
+  "VALOR_MANILHA_BASE": 1.0282,
+  "VALOR_MANILHA_DIVISOR": 11.2814,
+  "VALOR_COMUM_DIVISOR": 102.1936
 }

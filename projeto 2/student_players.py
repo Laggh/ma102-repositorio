@@ -52,7 +52,10 @@ PESOS = carregar_pesos()
 
 
 def peso_atual(nome_peso):
-    return PESOS[nome_peso][0]
+    valor = PESOS[nome_peso]
+    if isinstance(valor, list) or isinstance(valor, tuple):
+        return valor[0]
+    return valor
 
 # Pesos da avaliacao geral da mao. (somam 1.0)
 PESO_MEDIA_CHANCE_PADRAO = peso_atual("PESO_MEDIA_CHANCE_PADRAO")

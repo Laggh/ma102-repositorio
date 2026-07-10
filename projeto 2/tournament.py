@@ -42,11 +42,11 @@ class Score:
 PAIRS = {
     pair_name(): create_pair(), # Adiciona a sua própria dupla
     #'Dummy': (DummyPlayer(1, "Patrick Star", "img/Patrick_Star.jpeg"), DummyPlayer(2, "Philip Fry", "img/Philip_Fry.jpg")),
-    "COPIA": create_pair(),
-    'Greedy': (GreedyPlayer(3, "Scrooge McDuck", "img/Scrooge_McDuck.jpg"), GreedyPlayer(4, "Mr Burns", "img/Mr_Burns.jpg")),
+    # "COPIA": create_pair(),
+    #'Greedy': (GreedyPlayer(3, "Scrooge McDuck", "img/Scrooge_McDuck.jpg"), GreedyPlayer(4, "Mr Burns", "img/Mr_Burns.jpg")),
     #'Mixed': (DummyPlayer(5, "Mr Krabs", "img/Mr_Krabs.jpeg"), GreedyPlayer(6, "Mr Burns", "img/Mr_Burns.jpg")),
     'ReverseGreedy': (ReverseGreedyPlayer(7, "sbarK rM",  "img/Mr_KrabsR.png"), ReverseGreedyPlayer(8, "snruB yremogtnoM",  "img/Mr_BurnsR.png")),
-    'Mixed2': (ReverseGreedyPlayer(9, "kcuDcM egoorcS", "img/Scrooge_McduckR.png"), GreedyPlayer(10, "Montgomery Burns", "img/Mr_Burns.jpg")),
+    #'Mixed2': (ReverseGreedyPlayer(9, "kcuDcM egoorcS", "img/Scrooge_McduckR.png"), GreedyPlayer(10, "Montgomery Burns", "img/Mr_Burns.jpg")),
 }
 
 # Gerencia um único jogo de Truco até que uma dupla chegue a 12 pontos

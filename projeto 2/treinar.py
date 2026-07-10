@@ -4,19 +4,54 @@ import random
 import subprocess
 import re
 import time
+import sys
 
 ARQUIVO_PESOS = "pesos.json"
 ARQUIVO_LOG = "historico_treinamento.txt"
 NOME_BOT = "algum nome"
 
 # --- VARIÁVEIS DE CONFIGURAÇÃO ---
-JOGOS_NO_NORMAL = 100
+JOGOS_NO_NORMAL = 500
+JOGOS_PARA_CONFIRMAR = 1000
 QNT_PARA_SALVAR = 100
 VARIAVEIS_MUDADAS_AO_MESMO_TEMPO = 1
+
+LIMITES_PADRAO = {
+    "PESO_MEDIA_CHANCE_PADRAO": (0.0, 1.0),
+    "PESO_MEDIA_VALOR_PADRAO": (0.0, 1.0),
+    "PESO_CHANCE_MANILHA": (0.0, 1.0),
+    "PESO_VALOR_MANILHA": (0.0, 1.0),
+    "BONUS_QTD_MANILHAS": (0.0, 1.0),
+    "BONUS_MELHOR_MANILHA": (0.0, 1.0),
+    "MULTIPLICADOR_MAO_MANILHA_3": (0.0, 2.0),
+    "MULTIPLICADOR_MAO_BASE_2": (0.0, 2.0),
+    "MULTIPLICADOR_VENCEU_PRIMEIRA_RODADA": (0.0, 2.0),
+    "MULTIPLICADOR_PERDEU_PRIMEIRA_RODADA": (0.0, 2.0),
+    "RDD2_LIMIAR_SUBSTITUIR_CARTA": (0.0, 1.0),
+    "RDD2_LIMIAR_PEDIR_TRUCO": (0.0, 3.0),
+    "RDD3_LIMIAR_PEDIR_TRUCO": (0.0, 1.0),
+    "RESP_LIMIAR_CORRER": (0.0, 1.0),
+    "RESP_LIMIAR_AUMENTAR": (0.0, 3.0),
+    "VALOR_MANILHA_BASE": (0.0, 2.0),
+    "VALOR_MANILHA_DIVISOR": (1.0, 100.0),
+    "VALOR_COMUM_DIVISOR": (1.0, 1000.0),
+}
 
 def carregar_pesos():
     with open(ARQUIVO_PESOS, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def obter_valor_peso(entrada):
+    if isinstance(entrada, list) or isinstance(entrada, tuple):
+        return entrada[0]
+    return entrada
+
+
+def obter_limites_peso(nome_peso, entrada):
+    if isinstance(entrada, list) or isinstance(entrada, tuple):
+        return entrada[1], entrada[2]
+    return LIMITES_PADRAO[nome_peso]
 
 def salvar_pesos(pesos):
     with open(ARQUIVO_PESOS, "w", encoding="utf-8") as f:
@@ -24,7 +59,7 @@ def salvar_pesos(pesos):
 
 def avaliar_bot(num_jogos):
     """Roda o main.py e retorna a porcentagem de vitórias em JOGOS."""
-    comando_teste = ["venv\\Scripts\\python.exe", "main.py", "-n", str(num_jogos), "-s", "0"]
+    comando_teste = [sys.executable, "main.py", "-n", str(num_jogos), "-s", "0"]
     resultado = subprocess.run(comando_teste, capture_output=True, text=True, encoding='latin-1', errors='replace')
     saida = resultado.stdout
     
@@ -63,7 +98,9 @@ def mutar_pesos(pesos, taxa_mutacao=0.01, qtd_variaveis=1):
     log_mudancas = []
     
     for chave_escolhida in chaves_escolhidas:
-        atual, minimo, maximo = novos_pesos[chave_escolhida]
+        entrada_atual = novos_pesos[chave_escolhida]
+        atual = obter_valor_peso(entrada_atual)
+        minimo, maximo = obter_limites_peso(chave_escolhida, entrada_atual)
         
         range_peso = maximo - minimo
         if range_peso == 0:
@@ -74,7 +111,7 @@ def mutar_pesos(pesos, taxa_mutacao=0.01, qtd_variaveis=1):
         
         # Clampa o valor
         novo_valor = max(minimo, min(maximo, novo_valor))
-        novos_pesos[chave_escolhida][0] = round(novo_valor, 4)
+        novos_pesos[chave_escolhida] = round(novo_valor, 4)
         
         log_mudancas.append(f"{chave_escolhida}: {atual:.4f} -> {novo_valor:.4f}")
     
@@ -82,7 +119,7 @@ def mutar_pesos(pesos, taxa_mutacao=0.01, qtd_variaveis=1):
 
 def formatar_log(porcentagem, pesos):
     """Gera a string no formato: XXXX% Vitorias - peso1,peso2,peso3..."""
-    valores = [str(pesos[k][0]) for k in pesos.keys() if k != "NOME_DO_PESO"]
+    valores = [str(obter_valor_peso(pesos[k])) for k in pesos.keys() if k != "NOME_DO_PESO"]
     return f"{porcentagem:.2f}% Vitorias - " + ",".join(valores)
 
 def main():
@@ -109,11 +146,18 @@ def main():
         
         mudancas_str = " | ".join(log_mudancas)
         
-        # 3. Verifica se a taxa de vitória aumentou
-        if porcentagem_atual >= melhor_porcentagem:
-            print(f"[Iter {iteracao}] SUCESSO | {porcentagem_atual}% vitórias | {mudancas_str}")
-            melhor_porcentagem = porcentagem_atual
-            pesos_atuais = pesos_mutados
+        # 3. Se a amostra curta melhorar, confirma com 1000 jogos antes de aceitar
+        if porcentagem_atual > melhor_porcentagem:
+            print(f"[Iter {iteracao}] PROVISÓRIO | {porcentagem_atual}% vitórias em {JOGOS_NO_NORMAL} jogos | Confirmando com {JOGOS_PARA_CONFIRMAR} jogos...")
+            porcentagem_confirmada = avaliar_bot(JOGOS_PARA_CONFIRMAR)
+
+            if porcentagem_confirmada > melhor_porcentagem:
+                print(f"[Iter {iteracao}] SUCESSO | {porcentagem_confirmada}% vitórias confirmadas | {mudancas_str}")
+                melhor_porcentagem = porcentagem_confirmada
+                pesos_atuais = pesos_mutados
+            else:
+                print(f"[Iter {iteracao}] FALHA   | {porcentagem_confirmada}% vitórias confirmadas | Revertendo: {mudancas_str}")
+                salvar_pesos(pesos_atuais)
         else:
             print(f"[Iter {iteracao}] FALHA   | {porcentagem_atual}% vitórias | Revertendo: {mudancas_str}")
             # 4. Se diminuir, volta pro antes

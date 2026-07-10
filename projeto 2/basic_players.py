@@ -199,4 +199,126 @@ class ReverseGreedyPlayer(Player):
                     cards_found += 1
         return 0
     
-    
+class AnalyticalPlayer(Player):
+
+    def _get_sorted_hand(self, top_card):
+        """Retorna as cartas ordenadas do menor para o maior valor."""
+        return sorted(self._cards, key=lambda c: card_value(c, top_card))
+
+    def _did_my_team_win_round(self, round_index, play_hist, top_card):
+        """Verifica se o nosso time ganhou uma rodada específica."""
+        if len(play_hist) <= round_index:
+            return False
+            
+        round_plays = [p for p in play_hist[round_index] if p[1] is not None]
+        if not round_plays:
+            return False
+
+        t0_max, t1_max = 0, 0
+        for p_idx, card, _ in round_plays:
+            val = card_value(card, top_card)
+            if p_idx in (0, 2):
+                t0_max = max(t0_max, val)
+            else:
+                t1_max = max(t1_max, val)
+
+        my_team_id = 0 if self.position in (0, 2) else 1
+        
+        # Ignorando empates completos para simplificação da heurística
+        if my_team_id == 0:
+            return t0_max > t1_max
+        else:
+            return t1_max > t0_max
+
+    def play(self, top_card, play_hist, score_hist):
+        sorted_cards = self._get_sorted_hand(top_card)
+        worst_card = sorted_cards[0]
+        best_card = sorted_cards[-1]
+        
+        team = (self.position, (self.position + 2) % 4)
+        can_truco = True
+        
+        # Verifica se podemos trucar (ninguém do nosso time trucou ainda nesta rodada de apostas)
+        if len(play_hist) > 0:
+            for play in play_hist[-1]:
+                if play[2] in (3, 6, 9):
+                    can_truco = (play[0] not in team)
+
+        # Lógica de Decisão de Carta
+        chosen_card = best_card
+        round_number = 3 - len(self._cards) # 0 = R1, 1 = R2, 2 = R3
+
+        if round_number == 0:
+            # RODADA 1: Tentar não gastar a melhor carta logo de cara se tivermos cartas médias boas,
+            # a menos que precisemos matar a carta do GreedyPlayer.
+            if len(sorted_cards) == 3:
+                mid_card = sorted_cards[1]
+                # Se a carta do meio já é razoavelmente forte (ex: um 2 ou 3), usamos ela para sondar.
+                if card_value(mid_card, top_card) >= card_value('2D', top_card): # Assumindo um baseline de carta '2'
+                    chosen_card = mid_card
+                else:
+                    chosen_card = best_card
+                    
+        elif round_number == 1:
+            # RODADA 2: Se ganhamos a primeira, jogamos lixo para forçar o inimigo a gastar tudo.
+            # Se perdemos, jogamos a nossa vida (best_card).
+            won_r1 = self._did_my_team_win_round(0, play_hist, top_card)
+            if won_r1:
+                chosen_card = worst_card
+            else:
+                chosen_card = best_card
+                
+        else:
+            # RODADA 3: Só resta uma carta.
+            chosen_card = best_card
+
+        # Lógica de Pedir Truco
+        best_value = card_value(best_card, top_card)
+        
+        # Trucamos se: Temos uma manilha forte E não estamos na mão de 11 (12 pontos).
+        # Também trucamos se estamos na R2/R3, ganhamos a R1 e nossa carta restante é muito forte.
+        is_mao_de_onze = score_hist[-1][1] == 12 or score_hist[-1][0] == 12
+        
+        if can_truco and not is_mao_de_onze:
+            won_r1 = self._did_my_team_win_round(0, play_hist, top_card) if round_number > 0 else False
+            # Valor >= 1000 indica Manilha dependendo de como o judge.py funciona, 
+            # ou definimos um limite agressivo (ex: ter a maior manilha do jogo).
+            if best_value >= 1000:
+                # Se for a rodada 1, pede truco se for uma manilha alta.
+                # Se for rodadas finais e ganhamos a R1, pedimos truco para pressionar.
+                if round_number == 0 or won_r1:
+                    return 2, chosen_card
+
+        return 1, chosen_card
+
+    def respond(self, top_card, play_hist, score_hist):
+        if len(self._cards) == 0:
+            return 0 # Não deveria acontecer, mas proteção contra erros de índice
+
+        sorted_cards = self._get_sorted_hand(top_card)
+        best_card = sorted_cards[-1]
+        best_value = card_value(best_card, top_card)
+        
+        is_mao_de_onze = score_hist[-1][1] == 12
+        
+        # Se for mão de 11 do oponente, a avaliação precisa ser muito mais rigorosa,
+        # mas como respond() não lida com aceitar mão de 11 (normalmente é outra fase),
+        # tratamos apenas as respostas normais de truco.
+        
+        if is_mao_de_onze:
+            # Em mão de 11 contra nós, só aceita se tiver certeza absoluta (ZAP ou Copas).
+            if best_value > 2000: 
+                return 1
+            return 0
+
+        # Aceita o Truco se tiver pelo menos um 3 (valor base alto) ou qualquer Manilha (valor >= 1000)
+        if best_value >= 1000 or best_card[0] in ['3', '2']:
+            
+            # Avalia Retruco (Aumentar para 6, 9, 12)
+            # Retruca APENAS se tiver as melhores manilhas do jogo (Zap ou Copas/Sete)
+            if best_value > 2000: 
+                return 2 
+            return 1 # Apenas aceita
+            
+        # Se só temos cartas fracas (Figuras ou menores que 2), fugimos.
+        return 0
